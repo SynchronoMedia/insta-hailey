@@ -111,7 +111,7 @@ INSTAGRAM_USERNAME = os.getenv('INSTAGRAM_USERNAME')
 INSTAGRAM_PASSWORD = os.getenv('INSTAGRAM_PASSWORD')
 
 credentials = service_account.Credentials.from_service_account_info(
-    SERVICE_ACCOUNT_INFO,
+    eval(SERVICE_ACCOUNT_INFO),
     scopes=['https://www.googleapis.com/auth/drive']
 )
 service = build('drive', 'v3', credentials=credentials)
