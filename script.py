@@ -1,7 +1,7 @@
 import io
 import os
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timezone
 from instagrapi import Client
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -102,8 +102,23 @@ def upload_video_and_story(client, video_path, caption, username, password):
     print("Video uploaded as a story")
 
 
-# Environment Variables and Authentication
+def get_closest_media_row(schedule_csv_path):
+    # Load the media schedule
+    schedule_df = pd.read_csv(schedule_csv_path)
 
+    # Convert 'Date' column to datetime format and make it timezone-aware in UTC
+    schedule_df['Date & Time'] = pd.to_datetime(schedule_df['Date & Time']).dt.tz_localize('UTC')
+
+    # Get current time in UTC
+    current_time_utc = datetime.now(timezone.utc)
+
+    # Calculate the absolute time delta and find the row with the minimum difference
+    schedule_df['Time Delta'] = (schedule_df['Date & Time'] - current_time_utc).abs()
+    closest_media_row = schedule_df.loc[schedule_df['Time Delta'].idxmin()]
+
+    return closest_media_row
+
+# Environment Variables and Authentication
 SERVICE_ACCOUNT_INFO = os.getenv('GOOGLE_CREDENTIAL')
 
 # Load Instagram credentials from environment variables
@@ -120,16 +135,11 @@ service = build('drive', 'v3', credentials=credentials)
 SESSION_FILE_PATH = 'insta_session.json'
 
 # Load media schedule
-schedule_csv_path = 'media_schedule.csv'
-schedule_df = pd.read_csv(schedule_csv_path)
-
-# Get today's media schedule
-today_date = datetime.now().strftime('%Y-%m-%d')
-media_row = schedule_df[schedule_df['Date'] == today_date]
+media_row = get_closest_media_row('media_schedule.csv')
 
 # Main execution flow
 if not media_row.empty:
-    file_name = media_row.iloc[0]['File Path']
+    file_name = media_row['File Path']
     media_path = download_file_from_drive(service, folder_name='insta-hailey', file_name=file_name)
 
     if media_path:
